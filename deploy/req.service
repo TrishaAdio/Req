@@ -5,8 +5,9 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/opt/gatecast
-ExecStart=/opt/gatecast/.venv/bin/python bot.py
+WorkingDirectory=/opt/req
+# setup.py has already built the venv, so call it directly.
+ExecStart=/opt/req/.venv/bin/python bot.py
 Restart=always
 RestartSec=5
 # journald keeps the log; colours are off automatically when not a terminal.

@@ -14,10 +14,30 @@ the person — and the moment it records them for later broadcasts.
 ## Quick start
 
 ```bash
+git clone https://github.com/TrishaAdio/Req.git && cd Req
+python3 setup.py
+```
+
+`setup.py` builds `.venv`, installs the requirements, creates `.env` from the
+example and asks for the four values it needs, then starts the bot. Later runs
+skip straight to starting it — the install is only redone when
+`requirements.txt` changes.
+
+```bash
+python3 setup.py --install     # set up, don't start
+python3 setup.py --update      # reinstall requirements, then start
+python3 setup.py --recreate    # rebuild .venv from scratch
+```
+
+Prefer doing it by hand:
+
+```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 cp .env.example .env      # API_ID, API_HASH, BOT_TOKEN, OWNER_ID
 .venv/bin/python bot.py
 ```
+
+Python 3.9 or newer.
 
 In every channel you want served:
 
@@ -96,6 +116,7 @@ restarting.
 
 | Path | Role |
 |---|---|
+| `setup.py` | Builds `.venv`, installs requirements, checks `.env`, starts the bot |
 | `bot.py` | Entry point: startup, banner, graceful shutdown |
 | `app/config.py` | Environment configuration |
 | `app/log.py` | Colourised logging (colorama) |
@@ -107,7 +128,7 @@ restarting.
 | `app/copier.py` | Copy one message to one user |
 | `app/broadcast.py` | Worker pool, flood back-off, progress, cancel |
 | `app/handlers.py` | Join requests + owner commands |
-| `deploy/gatecast.service` | systemd unit |
+| `deploy/req.service` | systemd unit |
 
 An older flat `data/audience.json` (from the previous version of this bot) is
 imported automatically on first start.
@@ -115,9 +136,11 @@ imported automatically on first start.
 ## Deploy
 
 ```bash
-sudo cp deploy/gatecast.service /etc/systemd/system/
-sudo systemctl enable --now gatecast
-journalctl -u gatecast -f
+sudo git clone https://github.com/TrishaAdio/Req.git /opt/req
+cd /opt/req && sudo python3 setup.py --install
+sudo cp deploy/req.service /etc/systemd/system/
+sudo systemctl enable --now req
+journalctl -u req -f
 ```
 
 ## Notes
