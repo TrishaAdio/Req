@@ -1,0 +1,18 @@
+# Secrets
+.env
+
+# Telethon sessions contain your login — never commit them
+*.session
+*.session-journal
+
+# Runtime data (users, channels, post, buttons)
+data/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
