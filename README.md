@@ -112,6 +112,20 @@ A broadcast lives in memory: it does not resume after a restart, and starting it
 again sends to everyone, including those already reached. `/cancel` before
 restarting.
 
+## Who gets welcomed
+
+Every join request gets the post — including requests from people the bot has
+already welcomed, so someone who leaves and asks to join again, or who requests
+a second served channel, is welcomed each time.
+
+Set `WELCOME_ONCE=true` for the other behaviour: one post per user for as long
+as they are in `users.json`, with every later request from them sending nothing.
+That also collapses the two requests you get when someone joins two channels at
+once into a single message.
+
+Either way the request is always recorded, so the user is in the audience for
+`/bcast` even when no post is delivered.
+
 ## Layout
 
 | Path | Role |

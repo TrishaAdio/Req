@@ -89,6 +89,8 @@ def show_banner(me) -> None:
             ("bot", f"@{me.username} {log.dim(str(me.id))}"),
             ("owner", admins),
             ("channels", scope),
+            ("welcome", "once per user" if config.WELCOME_ONCE
+                        else "every join request"),
             ("post", log.ok(post.kind() or "set") if post.exists()
                      else log.warn("none — /setpost")),
             ("buttons", str(buttons.count())),
