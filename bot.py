@@ -91,6 +91,8 @@ def show_banner(me) -> None:
             ("channels", scope),
             ("welcome", "once per user" if config.WELCOME_ONCE
                         else "every join request"),
+            ("daily cap", f"{config.DAILY_USER_LIMIT} per user, admins exempt"
+                          if config.DAILY_USER_LIMIT else "off"),
             ("post", log.ok(post.kind() or "set") if post.exists()
                      else log.warn("none — /setpost")),
             ("buttons", str(buttons.count())),

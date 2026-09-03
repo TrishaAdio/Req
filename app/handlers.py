@@ -158,10 +158,12 @@ def register(bot: TelegramClient, caster: broadcast.Broadcaster) -> None:
             # Re-stamp on every delivery, so a returning requester's record
             # shows the welcome they just got, not the one from months ago.
             users.mark_welcome(user_id)
-        elif claimed:
-            # Nothing was delivered, so give the claim back and let a later
-            # request try again.
-            users.release_welcome(user_id)
+        else:
+            # Nothing was delivered: give back the day's allowance, and the
+            # welcome claim too, so a later request can try again.
+            users.release_send(user_id)
+            if claimed:
+                users.release_welcome(user_id)
         return result
 
     async def on_join_request(update: UpdateBotChatInviteRequester):
@@ -193,6 +195,14 @@ def register(bot: TelegramClient, caster: broadcast.Broadcaster) -> None:
                 pass
 
         who = log.name(f"{name or user_id}")
+        # Taken before the welcome claim below, so a capped requester leaves
+        # nothing to release — and after users.add(), so they are in the
+        # audience for a later /bcast even though today's post is not sent.
+        if not users.reserve_send(user_id):
+            _logger.info("%s requested %s — %s", who, log.val(chat_id),
+                         log.dim(f"{users.sends_today(user_id)} in 24h, at the cap"))
+            return
+
         # Claim the welcome BEFORE sending: two requests from the same person
         # (two channels, same second) arrive as two concurrent tasks, and the
         # claim is what stops both of them sending. A user who was welcomed
@@ -208,6 +218,7 @@ def register(bot: TelegramClient, caster: broadcast.Broadcaster) -> None:
             result = await deliver(target, user_id, claimed)
         except Exception:  # noqa: BLE001 - a claim must never be left dangling
             _logger.exception("welcome for %s failed", user_id)
+            users.release_send(user_id)
             if claimed:
                 users.release_welcome(user_id)
             return
@@ -384,6 +395,9 @@ def register(bot: TelegramClient, caster: broadcast.Broadcaster) -> None:
             f"Users <b>{count['total']}</b> · new today {count['new_today']}",
             f"Reachable {count['reachable']} · welcomed {count['welcomed']}",
         ]
+        if config.DAILY_USER_LIMIT:
+            lines.append(f"Daily cap {config.DAILY_USER_LIMIT} per user"
+                         f" · at it now {count['capped']}")
         dead = " · ".join(
             f"{label} {count[label]}"
             for label in ("blocked", "deleted", "invalid", "is_bot")
