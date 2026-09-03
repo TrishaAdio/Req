@@ -71,6 +71,9 @@ STRICT_CHANNELS = _bool("STRICT_CHANNELS", True)
 WELCOME_ONCE = _bool("WELCOME_ONCE", False)
 # Parallel welcome sends during a join raid.
 WELCOME_CONCURRENCY = max(1, _int("WELCOME_CONCURRENCY", 5))
+# Messages one user may receive from the bot in any 24 hours — welcomes and
+# broadcasts share the allowance. 0 removes the cap. Admins are never capped.
+DAILY_USER_LIMIT = max(0, _int("DAILY_USER_LIMIT", 2))
 
 # --- Broadcast pacing -----------------------------------------------------
 # Effective rate is roughly WORKERS / SEND_DELAY_SECONDS messages per second.

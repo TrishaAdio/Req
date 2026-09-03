@@ -126,6 +126,25 @@ once into a single message.
 Either way the request is always recorded, so the user is in the audience for
 `/bcast` even when no post is delivered.
 
+## The daily cap
+
+`DAILY_USER_LIMIT=2` is the ceiling on what one person receives from the bot in
+any 24 hours. Welcomes and broadcasts draw on the same allowance, so a requester
+can be welcomed twice, or welcomed once and then reached by one broadcast — the
+third message is not sent. `0` removes the cap.
+
+The window is rolling, not a calendar day: two messages at 23:59 do not free the
+allowance up again a minute later. Stamps age out individually, so the allowance
+returns gradually rather than all at once.
+
+`OWNER_ID` and `ADMIN_IDS` are exempt, so `/preview` and testing a broadcast on
+yourself work however often you run them.
+
+A user at the cap is still recorded and still counted in `/stats`, which reports
+the cap and how many users are sitting at it. A broadcast reports them as
+`at daily cap` instead of quietly sending or quietly dropping them. Nothing is
+sent to them until their window opens; the message is skipped, not queued.
+
 ## Layout
 
 | Path | Role |

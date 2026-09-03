@@ -33,6 +33,7 @@ class Stats:
     is_bot: int = 0
     error: int = 0
     skipped: int = 0
+    capped: int = 0
     started: float = field(default_factory=time.monotonic)
     finished: float | None = None
     stopped: str = ""
@@ -41,7 +42,7 @@ class Stats:
     @property
     def done(self) -> int:
         return (self.sent + self.blocked + self.deleted + self.invalid
-                + self.is_bot + self.error + self.skipped)
+                + self.is_bot + self.error + self.skipped + self.capped)
 
     @property
     def failed(self) -> int:
@@ -97,6 +98,7 @@ def render(stats: Stats, running: bool = False) -> str:
             ("bots", stats.is_bot),
             ("errors", stats.error),
             ("skipped", stats.skipped),
+            ("at daily cap", stats.capped),
         )
         if value
     ]
@@ -241,8 +243,16 @@ class Broadcaster:
             except asyncio.QueueEmpty:
                 return
 
+            # Reserved before the send, and given back in _record() if it
+            # fails, so a broadcast cannot push anyone over the daily cap that
+            # welcomes are already counting against.
+            if not users.reserve_send(user_id):
+                stats.capped += 1
+                continue
+
             await self.gate()
             if self._cancel or stats.stopped:
+                users.release_send(user_id)
                 return
 
             result = await self._send(user_id, stats)
@@ -277,6 +287,9 @@ class Broadcaster:
         post.remember(message)
 
     def _record(self, user_id: int, result: Result, stats: Stats) -> None:
+        if result.status != copier.SENT:
+            # The allowance taken before the send was never spent.
+            users.release_send(user_id)
         if result.status == copier.PEERFLOOD:
             stats.stopped = "peerflood"
             stats.skipped += 1  # this target was never delivered to
