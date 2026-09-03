@@ -4,7 +4,7 @@ data/users.json  ->  {"v": 1, "users": {"<user_id>": {...}}}
 
 Per-user record (short keys keep a 100k-user file small):
     n  display name          u  username           c  chat id first seen in
-    t  first seen (unix)     w  welcomed (unix)    s  status
+    t  first seen (unix)     w  last welcomed (unix)   s  status
 Status is "ok" until Telegram says otherwise. Anything in SKIP means later
 broadcasts leave that user alone.
 """
@@ -88,6 +88,19 @@ def release_welcome(user_id: int) -> None:
     if row is not None and row.get("w"):
         row["w"] = 0
         _store.mark_dirty()
+
+
+def mark_welcome(user_id: int) -> None:
+    """Stamp a welcome that was actually delivered.
+
+    Called after every successful send, not just the first, so `w` is the LAST
+    time the post reached this user rather than the only time it ever did.
+    """
+    row = _users().get(str(int(user_id)))
+    if row is None:
+        return
+    row["w"] = int(time.time())
+    _store.mark_dirty()
 
 
 def was_welcomed(user_id: int) -> bool:

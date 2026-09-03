@@ -64,8 +64,11 @@ ADMIN_IDS = _ids("ADMIN_IDS") | ({OWNER_ID} if OWNER_ID else set())
 # every chat it administers while no channel has been added, which means anyone
 # who makes it an admin feeds your audience — so it defaults to on.
 STRICT_CHANNELS = _bool("STRICT_CHANNELS", True)
-# Send the post once per user, even if they request to join several channels.
-WELCOME_ONCE = _bool("WELCOME_ONCE", True)
+# Off (default): every join request gets the post, including from someone who
+# was welcomed before — a person who leaves and requests again is welcomed again.
+# On: one post per user for as long as they stay in the store, so requesting a
+# second channel (or re-requesting) sends nothing.
+WELCOME_ONCE = _bool("WELCOME_ONCE", False)
 # Parallel welcome sends during a join raid.
 WELCOME_CONCURRENCY = max(1, _int("WELCOME_CONCURRENCY", 5))
 

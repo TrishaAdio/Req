@@ -154,9 +154,13 @@ def register(bot: TelegramClient, caster: broadcast.Broadcaster) -> None:
 
         if result.status in copier.USER_VERDICTS:
             users.set_status(user_id, result.status)
-        # Nothing was delivered, so give the claim back and let a later request
-        # try again. On success the claim made before the send is what stands.
-        if not result.ok and claimed:
+        if result.ok:
+            # Re-stamp on every delivery, so a returning requester's record
+            # shows the welcome they just got, not the one from months ago.
+            users.mark_welcome(user_id)
+        elif claimed:
+            # Nothing was delivered, so give the claim back and let a later
+            # request try again.
             users.release_welcome(user_id)
         return result
 
@@ -190,10 +194,14 @@ def register(bot: TelegramClient, caster: broadcast.Broadcaster) -> None:
 
         who = log.name(f"{name or user_id}")
         # Claim the welcome BEFORE sending: two requests from the same person
-        # (two channels, same second) arrive as two concurrent tasks.
+        # (two channels, same second) arrive as two concurrent tasks, and the
+        # claim is what stops both of them sending. A user who was welcomed
+        # before cannot claim it again — under WELCOME_ONCE that ends the
+        # request here, otherwise the send goes ahead unclaimed.
         claimed = users.claim_welcome(user_id)
         if not claimed and config.WELCOME_ONCE:
-            _logger.info("%s requested %s — already welcomed", who, log.val(chat_id))
+            _logger.info("%s requested %s — %s", who, log.val(chat_id),
+                         log.dim("already welcomed, WELCOME_ONCE"))
             return
 
         try:
