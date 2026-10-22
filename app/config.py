@@ -70,6 +70,9 @@ STRICT_CHANNELS = _bool("STRICT_CHANNELS", True)
 AUTO_ADD_CHANNELS = _bool("AUTO_ADD_CHANNELS", True)
 # DM OWNER_ID when a channel is auto-added, and send the startup backup there.
 NOTIFY_OWNER = _bool("NOTIFY_OWNER", True)
+# Twice-daily (00:00 and 12:00 IST) report to the owner: how many new users came
+# and how many were returning in the last 12 hours. Uses the NOTIFY_OWNER target.
+PERIODIC_REPORT = _bool("PERIODIC_REPORT", True)
 # On every start, send the owner a JSON copy of the audience so it survives a
 # lost disk / redeploy. Shares the NOTIFY_OWNER target but has its own switch.
 STARTUP_BACKUP = _bool("STARTUP_BACKUP", True)
@@ -108,6 +111,7 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 USERS_FILE = DATA_DIR / "users.json"
 CHANNELS_FILE = DATA_DIR / "channels.json"
 POST_FILE = DATA_DIR / "post.json"
+REPORT_FILE = DATA_DIR / "report.json"
 BUTTONS_FILE = DATA_DIR / "buttons.json"
 # Flat id list written by older versions / the reference bot; imported once.
 LEGACY_AUDIENCE_FILE = DATA_DIR / "audience.json"

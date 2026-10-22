@@ -22,7 +22,18 @@ from telethon.tl.types import (
     UpdateChatParticipant,
 )
 
-from . import broadcast, buttons, channels, config, copier, log, owner, post, users
+from . import (
+    broadcast,
+    buttons,
+    channels,
+    config,
+    copier,
+    log,
+    owner,
+    post,
+    report,
+    users,
+)
 
 _logger = log.get("bot")
 
@@ -220,6 +231,10 @@ def register(bot: TelegramClient, caster: broadcast.Broadcaster) -> None:
             pass
 
         is_new = users.add(user_id, name, username, chat_id)
+        # Count this request toward the 12-hour owner report before anything
+        # can short-circuit (the cap, WELCOME_ONCE): a capped or silently
+        # dropped request is still a user who came, new or returning.
+        report.record(is_new)
         if channels.count() and not channels.title_of(chat_id):
             try:
                 chat = await bot.get_entity(update.peer)

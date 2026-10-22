@@ -128,6 +128,14 @@ The owner (`OWNER_ID`) is kept in the loop automatically:
   redeploy. Turn it off with `STARTUP_BACKUP=false`. `/export` gets the same
   file on demand.
 
+- **12-hour report.** At **00:00 and 12:00 IST** the owner is DMed how the last
+  12 hours went — how many **new** users came (a first-ever request) and how
+  many were **returning** (a request from someone already in the audience).
+  Every request is counted as it arrives, including capped or `WELCOME_ONCE`
+  ones, and the counters reset when the report is sent. The window survives a
+  restart, so the message states the exact span it covers. Turn it off with
+  `PERIODIC_REPORT=false`.
+
 Both fail quietly — if the owner never pressed Start, or has no `OWNER_ID` set,
 the bot logs it and goes on serving join requests.
 
