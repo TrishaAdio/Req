@@ -43,9 +43,11 @@ In every channel you want served:
 
 1. Make the bot an **admin** with the **Add users** right.
 2. Turn on **Approve new members** — that is what creates join requests.
-3. Send the bot `/add -1001234567890` (a bare id, `@username` or a `t.me/...`
-   link work too). Nothing is served until you do — set `STRICT_CHANNELS=false`
-   if you would rather have every chat the bot administers served by default.
+3. That's it — the channel is **served automatically** the moment the bot is
+   added or promoted (`AUTO_ADD_CHANNELS`, on by default), and the owner gets a
+   success message with the details. You can still add one by hand with
+   `/add -1001234567890` (a bare id, `@username` or a `t.me/...` link work too)
+   — handy for a chat the bot has not joined yet, or to re-add after `/remove`.
 
 Then send the bot the message you want delivered and reply to it with
 `/setpost`. `/preview` shows exactly what a joiner receives.
@@ -111,6 +113,23 @@ account, or turn out to be bots are marked and skipped by later runs.
 A broadcast lives in memory: it does not resume after a restart, and starting it
 again sends to everyone, including those already reached. `/cancel` before
 restarting.
+
+## Owner reports & backups
+
+The owner (`OWNER_ID`) is kept in the loop automatically:
+
+- **Auto-add.** When the bot is added to a chat or promoted to admin, that chat
+  starts being served without an `/add`, and the owner is DMed a success
+  message with the title, chat id, the bot's role there, and the new channel
+  count. An already-served chat is not re-announced; leaving or being banned is
+  ignored. Turn it off with `AUTO_ADD_CHANNELS=false` / `NOTIFY_OWNER=false`.
+- **Startup backup.** On every start the owner is sent a JSON copy of the whole
+  audience (`users-backup-<timestamp>.json`) so it survives a lost disk or a
+  redeploy. Turn it off with `STARTUP_BACKUP=false`. `/export` gets the same
+  file on demand.
+
+Both fail quietly — if the owner never pressed Start, or has no `OWNER_ID` set,
+the bot logs it and goes on serving join requests.
 
 ## Who gets welcomed
 

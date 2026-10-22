@@ -12,9 +12,17 @@ import re
 
 from telethon import TelegramClient, events, utils
 from telethon.errors import MessageNotModifiedError
-from telethon.tl.types import UpdateBotChatInviteRequester
+from telethon.tl.types import (
+    ChannelParticipantBanned,
+    ChannelParticipantLeft,
+    PeerChannel,
+    PeerChat,
+    UpdateBotChatInviteRequester,
+    UpdateChannelParticipant,
+    UpdateChatParticipant,
+)
 
-from . import broadcast, buttons, channels, config, copier, log, post, users
+from . import broadcast, buttons, channels, config, copier, log, owner, post, users
 
 _logger = log.get("bot")
 
@@ -65,6 +73,31 @@ def _label(chat_id: int, title: str = "") -> str:
     title = title or channels.title_of(chat_id)
     tag = f"<code>{chat_id}</code>"
     return f"{tag} — {_esc(title)}" if title else tag
+
+
+def _is_admin_participant(participant) -> bool:
+    """True when this participant row carries admin (or creator) rights."""
+    return participant.__class__.__name__ in (
+        "ChannelParticipantAdmin", "ChannelParticipantCreator",
+        "ChatParticipantAdmin", "ChatParticipantCreator",
+    )
+
+
+def _added_message(chat_id: int, title: str, is_admin: bool) -> str:
+    """The detailed 'success' note the owner gets when a channel is auto-added."""
+    role = "admin" if is_admin else "member — promote it to admin to serve requests"
+    post_line = (f"Post: {_esc(post.kind() or 'set')}" if post.exists()
+                 else "Post: <b>none</b> — reply to a message with /setpost")
+    return (
+        "✅ <b>Channel added — success</b>\n"
+        "\n"
+        f"Title: <b>{_esc(title) or '(unknown yet)'}</b>\n"
+        f"Chat ID: <code>{chat_id}</code>\n"
+        f"Role: {role}\n"
+        "\n"
+        f"Now serving: <b>{channels.count()}</b> channel(s)\n"
+        f"{post_line}"
+    )
 
 
 def _who(user) -> tuple[str, str]:
@@ -235,6 +268,62 @@ def register(bot: TelegramClient, caster: broadcast.Broadcaster) -> None:
                             log.err(str(result)))
 
     bot.add_event_handler(on_join_request, events.Raw(UpdateBotChatInviteRequester))
+
+    # --- auto-add: serve a chat the moment the bot is added to it ----------
+    _me: dict = {}
+
+    async def my_id() -> int:
+        """The bot's own user id, resolved once and cached."""
+        if "id" not in _me:
+            _me["id"] = (await bot.get_me()).id
+        return _me["id"]
+
+    async def on_self_participant(update):
+        """The bot's membership somewhere changed. If it was just added (or
+        promoted), start serving that chat without waiting for an /add.
+
+        Fires for channels and supergroups (UpdateChannelParticipant) and for
+        basic groups (UpdateChatParticipant). We act only on the bot's OWN row,
+        and only when it is now present — not when it left or was banned.
+        """
+        if not config.AUTO_ADD_CHANNELS:
+            return
+        try:
+            if update.user_id != await my_id():
+                return
+        except Exception:  # noqa: BLE001 - can't identify ourselves yet
+            return
+
+        new = getattr(update, "new_participant", None)
+        if new is None or isinstance(new, (ChannelParticipantLeft,
+                                           ChannelParticipantBanned)):
+            return  # left / kicked / banned — nothing to serve
+
+        if isinstance(update, UpdateChannelParticipant):
+            chat_id = utils.get_peer_id(PeerChannel(update.channel_id))
+        else:  # UpdateChatParticipant
+            chat_id = utils.get_peer_id(PeerChat(update.chat_id))
+
+        title = ""
+        try:
+            entity = await bot.get_entity(chat_id)
+            title = getattr(entity, "title", "") or ""
+        except Exception:  # noqa: BLE001 - learn the title on the first request
+            pass
+
+        if not channels.add(chat_id, title):
+            return  # already served — not a new channel, stay quiet
+
+        is_admin_now = _is_admin_participant(new)
+        _logger.info("auto-added %s %s %s", log.val(chat_id), log.dim(title),
+                     log.dim("(admin)" if is_admin_now else "(member)"))
+
+        await owner.notify(bot, _added_message(chat_id, title, is_admin_now))
+
+    bot.add_event_handler(
+        on_self_participant,
+        events.Raw([UpdateChannelParticipant, UpdateChatParticipant]),
+    )
 
     # --- discovery aid: who is talking to a bot with no OWNER_ID set -------
     seen_strangers: set[int] = set()

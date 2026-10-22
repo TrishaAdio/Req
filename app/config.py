@@ -64,6 +64,15 @@ ADMIN_IDS = _ids("ADMIN_IDS") | ({OWNER_ID} if OWNER_ID else set())
 # every chat it administers while no channel has been added, which means anyone
 # who makes it an admin feeds your audience — so it defaults to on.
 STRICT_CHANNELS = _bool("STRICT_CHANNELS", True)
+# Serve a chat automatically the moment the bot is added to it (or promoted to
+# admin), with no /add needed. /add still works for adding a channel the bot is
+# not a member of yet, or for re-adding one after /remove.
+AUTO_ADD_CHANNELS = _bool("AUTO_ADD_CHANNELS", True)
+# DM OWNER_ID when a channel is auto-added, and send the startup backup there.
+NOTIFY_OWNER = _bool("NOTIFY_OWNER", True)
+# On every start, send the owner a JSON copy of the audience so it survives a
+# lost disk / redeploy. Shares the NOTIFY_OWNER target but has its own switch.
+STARTUP_BACKUP = _bool("STARTUP_BACKUP", True)
 # Off (default): every join request gets the post, including from someone who
 # was welcomed before — a person who leaves and requests again is welcomed again.
 # On: one post per user for as long as they stay in the store, so requesting a
