@@ -34,6 +34,7 @@ from app import (
     log,
     owner,
     post,
+    report,
     storage,
     users,
 )
@@ -129,6 +130,7 @@ async def main() -> None:
         await owner.send_backup(bot, reason="startup")
 
     flusher = asyncio.create_task(storage.autoflush())
+    reporter = asyncio.create_task(report.periodic(bot))
 
     stopping = asyncio.Event()
     loop = asyncio.get_running_loop()
@@ -164,6 +166,7 @@ async def main() -> None:
                     break
                 await asyncio.sleep(0.25)
         flusher.cancel()
+        reporter.cancel()
         try:
             storage.flush_all(force=True)
         except Exception:  # noqa: BLE001 - never skip the disconnect
