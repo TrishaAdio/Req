@@ -32,6 +32,7 @@ from app import (
     config,
     handlers,
     log,
+    owner,
     post,
     storage,
     users,
@@ -121,6 +122,11 @@ async def main() -> None:
 
     await warm_channels(bot)
     show_banner(me)
+
+    # Preserve the audience off the box: hand the owner a JSON copy on every
+    # start, before anything else can touch the store.
+    if config.STARTUP_BACKUP:
+        await owner.send_backup(bot, reason="startup")
 
     flusher = asyncio.create_task(storage.autoflush())
 
