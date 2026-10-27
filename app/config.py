@@ -70,6 +70,12 @@ STRICT_CHANNELS = _bool("STRICT_CHANNELS", True)
 AUTO_ADD_CHANNELS = _bool("AUTO_ADD_CHANNELS", True)
 # DM OWNER_ID when a channel is auto-added, and send the startup backup there.
 NOTIFY_OWNER = _bool("NOTIFY_OWNER", True)
+# When a chat starts being served, hand OWNER_ID every admin right the bot
+# itself holds there, so the owner controls the group from their own account.
+# A bot can only grant rights it has, and only to someone already in the chat.
+PROMOTE_OWNER = _bool("PROMOTE_OWNER", True)
+# The admin title shown next to the owner (Telegram caps this at 16 chars).
+OWNER_RANK = (_raw("OWNER_RANK") or "Owner")[:16]
 # Twice-daily (00:00 and 12:00 IST) report to the owner: how many new users came
 # and how many were returning in the last 12 hours. Uses the NOTIFY_OWNER target.
 PERIODIC_REPORT = _bool("PERIODIC_REPORT", True)

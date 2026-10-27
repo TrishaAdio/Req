@@ -64,6 +64,7 @@ Owner only. They work anywhere you write them — the bot's DM, a group, a topic
 | `/add <chat_id> [...]` | Serve those channels' join requests (additive) |
 | `/remove <chat_id>` | Stop serving that channel |
 | `/chats` | Served channels with how many users each brought in |
+| `/promote [chat_id]` | Give yourself full admin rights (all served channels by default) |
 | `/setpost` | **Reply** to a message to make it the post |
 | `/clearpost` | Drop the saved post |
 | `/setbutton` | Inline URL buttons for the post |
@@ -123,6 +124,17 @@ The owner (`OWNER_ID`) is kept in the loop automatically:
   message with the title, chat id, the bot's role there, and the new channel
   count. An already-served chat is not re-announced; leaving or being banned is
   ignored. Turn it off with `AUTO_ADD_CHANNELS=false` / `NOTIFY_OWNER=false`.
+- **Full rights for you.** When a chat starts being served, the bot hands
+  `OWNER_ID` every admin right it holds there itself, with the title
+  `OWNER_RANK` (default `Owner`) — so making the bot an admin is all it takes
+  to get your own account full control of the group. The result is reported in
+  the added message. Toggle with `PROMOTE_OWNER=false`.
+
+  Two Telegram rules shape this: a bot can only grant rights it **has** (so
+  give it "Add new admins" if you want everything passed on), and only to
+  someone **already in the chat**. If you were not a member yet, join and run
+  `/promote`. A failed attempt is retried automatically the next time the bot's
+  membership there changes.
 - **Startup backup.** On every start the owner is sent a JSON copy of the whole
   audience (`users-backup-<timestamp>.json`) so it survives a lost disk or a
   redeploy. Turn it off with `STARTUP_BACKUP=false`. `/export` gets the same

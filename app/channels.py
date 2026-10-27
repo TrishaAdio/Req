@@ -73,6 +73,19 @@ def remove(chat_id: int) -> bool:
     return True
 
 
+def owner_promoted(chat_id: int) -> bool:
+    """Has the owner already been handed admin rights here?"""
+    return bool(_chats().get(str(int(chat_id)), {}).get("op"))
+
+
+def mark_owner_promoted(chat_id: int) -> None:
+    """Remember a successful promotion, so it is not retried or re-announced."""
+    row = _chats().get(str(int(chat_id)))
+    if row is not None and not row.get("op"):
+        row["op"] = 1
+        _store.save()
+
+
 def set_title(chat_id: int, title: str) -> None:
     row = _chats().get(str(int(chat_id)))
     if row is not None and title and row.get("title") != title:
