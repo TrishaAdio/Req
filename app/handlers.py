@@ -43,6 +43,7 @@ PANEL = (
     "<code>/add</code> chat_id — serve that channel's join requests\n"
     "<code>/remove</code> chat_id — stop serving it\n"
     "<code>/chats</code> — served channels\n"
+    "<code>/promote</code> — give yourself full rights in them\n"
     "<code>/setpost</code> — reply to a message to make it the post\n"
     "<code>/clearpost</code> — drop the saved post\n"
     "<code>/setbutton</code> — inline URL buttons for the post\n"
@@ -94,7 +95,20 @@ def _is_admin_participant(participant) -> bool:
     )
 
 
-def _added_message(chat_id: int, title: str, is_admin: bool) -> str:
+def _rights_line(promo: tuple[bool, str] | None) -> str:
+    """How the attempt to hand the owner full rights went."""
+    if promo is None:
+        return "Your rights: not attempted — the bot is not an admin yet"
+    ok, detail = promo
+    if ok:
+        return f"Your rights: ✅ full admin ({_esc(detail)})"
+    if detail == "disabled":
+        return "Your rights: skipped — PROMOTE_OWNER is off"
+    return f"Your rights: ⚠️ not granted — {_esc(detail)}"
+
+
+def _added_message(chat_id: int, title: str, is_admin: bool,
+                   promo: tuple[bool, str] | None) -> str:
     """The detailed 'success' note the owner gets when a channel is auto-added."""
     role = "admin" if is_admin else "member — promote it to admin to serve requests"
     post_line = (f"Post: {_esc(post.kind() or 'set')}" if post.exists()
@@ -105,6 +119,7 @@ def _added_message(chat_id: int, title: str, is_admin: bool) -> str:
         f"Title: <b>{_esc(title) or '(unknown yet)'}</b>\n"
         f"Chat ID: <code>{chat_id}</code>\n"
         f"Role: {role}\n"
+        f"{_rights_line(promo)}\n"
         "\n"
         f"Now serving: <b>{channels.count()}</b> channel(s)\n"
         f"{post_line}"
@@ -326,14 +341,40 @@ def register(bot: TelegramClient, caster: broadcast.Broadcaster) -> None:
         except Exception:  # noqa: BLE001 - learn the title on the first request
             pass
 
-        if not channels.add(chat_id, title):
-            return  # already served — not a new channel, stay quiet
-
+        newly_added = channels.add(chat_id, title)
         is_admin_now = _is_admin_participant(new)
-        _logger.info("auto-added %s %s %s", log.val(chat_id), log.dim(title),
-                     log.dim("(admin)" if is_admin_now else "(member)"))
 
-        await owner.notify(bot, _added_message(chat_id, title, is_admin_now))
+        # The bot can only pass on rights once it holds them itself. Being
+        # added as a plain member and promoted afterwards arrives as two
+        # separate updates, so the promotion is attempted on whichever one
+        # makes the bot an admin — not only on the first sighting of the chat.
+        promo = None
+        if is_admin_now and not channels.owner_promoted(chat_id):
+            promo = await owner.promote(bot, chat_id)
+            if promo[0]:
+                channels.mark_owner_promoted(chat_id)
+                _logger.info("owner given full rights in %s %s",
+                             log.val(chat_id), log.dim(promo[1]))
+            elif promo[1] != "disabled":
+                _logger.warning("could not give the owner rights in %s: %s",
+                                chat_id, promo[1])
+
+        if newly_added:
+            _logger.info("auto-added %s %s %s", log.val(chat_id), log.dim(title),
+                         log.dim("(admin)" if is_admin_now else "(member)"))
+            await owner.notify(
+                bot, _added_message(chat_id, title, is_admin_now, promo))
+        elif promo is not None and promo[0]:
+            # Already served, but the bot has only just become able to hand
+            # the rights over — worth one line, not the whole added message.
+            await owner.notify(
+                bot,
+                "✅ <b>Full rights granted — success</b>\n"
+                "\n"
+                f"Title: <b>{_esc(title) or '(unknown yet)'}</b>\n"
+                f"Chat ID: <code>{chat_id}</code>\n"
+                f"You are now admin there ({_esc(promo[1])}).",
+            )
 
     bot.add_event_handler(
         on_self_participant,
@@ -425,6 +466,40 @@ def register(bot: TelegramClient, caster: broadcast.Broadcaster) -> None:
             for chat_id, title in items
         ]
         await event.reply(f"<b>Channels ({len(items)})</b>\n\n" + "\n".join(lines))
+
+    @on("promote", "rights")
+    async def promote(event):
+        """Hand the owner full rights on demand — the retry for a chat they
+        had not joined yet when the bot was added."""
+        if not config.PROMOTE_OWNER:
+            await event.reply("<code>PROMOTE_OWNER</code> is off in .env.")
+            return
+
+        raw = _args(event)
+        if raw:
+            targets = []
+            for token in raw.replace(",", " ").split():
+                ident = channels.parse_ident(token)
+                if ident is None:
+                    await event.reply(f"Not a chat id: {_esc(token)}")
+                    return
+                chat_id, _ = await resolve_chat(ident)
+                if chat_id is not None:
+                    targets.append(chat_id)
+        else:
+            targets = channels.ids()
+
+        if not targets:
+            await event.reply("No channels to promote in.")
+            return
+
+        lines = []
+        for chat_id in targets:
+            ok, detail = await owner.promote(bot, chat_id)
+            if ok:
+                channels.mark_owner_promoted(chat_id)
+            lines.append(f"{'✅' if ok else '⚠️'} {_label(chat_id)} — {_esc(detail)}")
+        await event.reply("<b>Owner rights</b>\n\n" + "\n".join(lines))
 
     # --- the post ---------------------------------------------------------
     @on("setpost")
